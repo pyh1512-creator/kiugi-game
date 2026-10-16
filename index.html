@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>박예훈 키우기 (Feed & Grow Yehoon) - 무한 성장 병맛 방치형 게임</title>
+  <meta name="description" content="세상에서 가장 웃기고 끝없이 커지는 박예훈을 맛있는 음식으로 무한히 육성해보세요! 자취방에서 우주까지 거대해지는 코믹 클리커 육성 게임">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="예훈 키우기">
+  <meta name="theme-color" content="#12141d">
+  <meta name="format-detection" content="telephone=no">
+  
+  <!-- Google Fonts: Jua & Gowun Dodum & Fredoka for funny and modern game feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Jua&family=Gowun+Dodum&family=Black+Han+Sans&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-app">
+    <!-- 게임 배경 레이어 (레벨에 따라 자취방 -> 골목길 -> 도시 -> 구름 위 -> 지구 -> 우주로 변화) -->
+    <div id="stage-bg" class="stage-room">
+      <div class="bg-layer bg-back"></div>
+      <div class="bg-layer bg-mid"></div>
+      <div class="bg-layer bg-front"></div>
+      <!-- 배경 오브젝트들 (구름, 별, 먼지, 지나가는 비행기 등) -->
+      <div id="bg-props-container"></div>
+    </div>
+
+    <!-- 파티클 이펙트 캔버스 (화면 전체) -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- 상단 헤더: 스테이터스 & 재화 바 -->
+    <header id="game-header">
+      <div class="header-top-row">
+        <div class="stage-badge" id="stage-badge">
+          <span class="stage-icon" id="stage-icon">🥋</span>
+          <div class="stage-info">
+            <span class="stage-title" id="stage-title">1단계: 거북선류 수련생 손예훈</span>
+            <span class="stage-sub" id="stage-sub">현재 장소: 드래곤볼 - 노말 도복</span>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <button id="btn-sound" class="icon-btn" title="소리 켜기/끄기" aria-label="사운드 토글">
+            <span id="sound-icon">🔊</span>
+          </button>
+          <button id="btn-stats" class="icon-btn" title="상세 스탯 & 업적" aria-label="통계 및 업적">
+            <span>🏆</span>
+          </button>
+          <button id="btn-settings" class="icon-btn" title="설정 & 데이터 관리" aria-label="설정">
+            <span>⚙️</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 메인 스탯 대시보드 -->
+      <div class="stats-dashboard">
+        <!-- 레벨 & 체중 -->
+        <div class="stat-card weight-card">
+          <div class="stat-label">
+            <span class="pulse-dot"></span> 예훈의 현재 몸집 (Lv.<span id="stat-level">1</span>)
+          </div>
+          <div class="stat-value-box">
+            <span class="stat-value" id="stat-weight">55.0</span>
+            <span class="stat-unit" id="stat-weight-unit">kg</span>
+          </div>
+          <!-- 다음 진화까지 경험치(칼로리) 게이지 -->
+          <div class="exp-bar-wrap" id="exp-bar-wrap" title="다음 진화 단계까지 진행도">
+            <div class="exp-bar-fill" id="exp-bar-fill" style="width: 0%;"></div>
+            <span class="exp-text" id="exp-text">0 / 100 Cal (0%)</span>
+          </div>
+          <!-- 수동 레벨업 버튼 (경험치 100% 도달 시 황금빛으로 등장) -->
+          <button id="btn-manual-levelup" class="btn-manual-levelup hidden" title="클릭하여 즉시 레벨업!">
+            <span class="btn-levelup-text" id="btn-levelup-text">✨ 레벨업!</span>
+          </button>
+        </div>
+
+        <!-- 보유 코인(먹방 머니) & 초당 자동 칼로리 -->
+        <div class="stat-card currency-card">
+          <div class="currency-row">
+            <span class="coin-icon">🪙</span>
+            <div class="currency-info">
+              <span class="cur-label">먹방 코인</span>
+              <span class="cur-value" id="stat-coins">0</span>
+            </div>
+          </div>
+          <div class="auto-calorie-row">
+            <span class="auto-icon">⚡</span>
+            <span class="auto-label">자동 소화:</span>
+            <span class="auto-value" id="stat-cps">+0 Cal/초</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- 중앙 메인 뷰: 정진우 캐릭터 & 무대 -->
+    <main id="character-stage">
+      <!-- 카메라 컨트롤러 줌 인디케이터 / 슬라이더 -->
+      <div class="camera-controls">
+        <button id="btn-zoom-out" class="cam-btn" title="카메라 줌아웃">🔍-</button>
+        <span id="zoom-level-text">100%</span>
+        <button id="btn-zoom-in" class="cam-btn" title="카메라 줌인">🔍+</button>
+        <button id="btn-zoom-reset" class="cam-btn" title="카메라 자동 추적">🎯</button>
+      </div>
+
+      <!-- 진우 말풍선 대사 -->
+      <div id="speech-bubble" class="speech-bubble hidden">
+        <span id="speech-text">배고파 죽겠다... 뭐라도 줘!</span>
+        <div class="bubble-arrow"></div>
+      </div>
+
+      <!-- 캐릭터 컨테이너 (스케일 및 줌 제어) -->
+      <div id="jinwoo-wrapper">
+        <div id="jinwoo-character" class="jinwoo-idle">
+          <!-- 진우 감정 오라/이펙트 -->
+          <div id="jinwoo-aura" class="jinwoo-aura"></div>
+
+          <!-- 진우 SVG 인터랙티브 그래픽 -->
+          <div id="jinwoo-svg-container">
+            <!-- character.js가 렌더링하고 업데이트하는 고품질 동적 벡터 캐릭터 -->
+          </div>
+
+          <!-- 터치 피드백 리액션 이펙트 레이어 -->
+          <div id="character-tap-hitbox" title="예훈을 찌르면 뱃살이 출렁거리고 보너스 칼로리를 줍니다!"></div>
+        </div>
+        
+        <!-- 캐릭터 바닥 그림자 -->
+        <div id="jinwoo-shadow"></div>
+      </div>
+
+
+      <!-- 플로팅 텍스트 컨테이너 (+10 Cal, CRITICAL!, 배부름! 등) -->
+      <div id="floating-text-container"></div>
+    </main>
+
+    <!-- 하단 덱: 음식 먹이기 메뉴 & 탭 컨트롤러 -->
+    <footer id="game-controls">
+      <!-- 하단 탭 메뉴 버튼들 -->
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="tab-food">
+          <span class="tab-icon">🍔</span>
+          <span class="tab-name">음식 먹이기</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-auto">
+          <span class="tab-icon">🛵</span>
+          <span class="tab-name">자동 알바</span>
+          <span class="tab-badge hidden" id="badge-auto">!</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-upgrade">
+          <span class="tab-icon">⚡</span>
+          <span class="tab-name">위장 강화</span>
+          <span class="tab-badge hidden" id="badge-upgrade">!</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-costume">
+          <span class="tab-icon">👑</span>
+          <span class="tab-name">예훈 옷장</span>
+        </button>
+      </div>
+
+      <!-- 탭 컨텐츠 컨테이너 -->
+      <div class="tab-contents">
+        <!-- 1. 음식 탭: 다양한 음식 카드들 -->
+        <div id="tab-food" class="tab-pane active">
+          <div class="pane-header">
+            <span class="pane-tip">💡 음식을 <b>클릭</b>하거나 예훈 입으로 <b>드래그</b>해서 먹여주세요!</span>
+            <div class="combo-counter hidden" id="combo-box">
+              <span class="combo-flame">🔥</span>
+              <span id="combo-text">10 COMBO!</span>
+            </div>
+          </div>
+          <div class="food-carousel-wrap">
+            <div id="food-list" class="food-grid">
+              <!-- game.js에서 렌더링 (삼각김밥, 컵라면, 치킨, 피자, 킹크랩, 우주버거 등) -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 자동 알바 탭: 초당 자동 성장 공급원 -->
+        <div id="tab-auto" class="tab-pane">
+          <div class="pane-header">
+            <span class="pane-tip">🛵 예훈이 가만히 있어도 음식을 퍼먹여주는 조력자들을 고용하세요!</span>
+          </div>
+          <div id="auto-feeder-list" class="upgrade-list">
+            <!-- game.js에서 렌더링 (옆집 할머니, 배달 라이더, 먹방 후원자 등) -->
+          </div>
+        </div>
+
+        <!-- 3. 위장 강화 탭: 클릭 파워, 크리티컬, 소화 효율 -->
+        <div id="tab-upgrade" class="tab-pane">
+          <div class="pane-header">
+            <span class="pane-tip">⚡ 예훈의 턱 힘과 위장 용량을 단련하여 성장 속도를 비약적으로 높입니다!</span>
+          </div>
+          <div id="stomach-upgrade-list" class="upgrade-list">
+            <!-- game.js에서 렌더링 -->
+          </div>
+        </div>
+
+        <!-- 4. 예훈 옷장 탭: 유머러스한 치장 아이템 -->
+        <div id="tab-costume" class="tab-pane">
+          <div class="pane-header">
+            <span class="pane-tip">👑 특정 진화 단계에 도달하면 예훈의 개성 넘치는 패션이 해금됩니다!</span>
+          </div>
+          <div id="costume-list" class="costume-grid">
+            <!-- game.js에서 렌더링 -->
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- 진화/레벨업 축하 풀스크린 모달 이펙트 -->
+    <div id="evolution-modal" class="modal-backdrop hidden">
+      <div class="evolution-card">
+        <div class="evo-shine"></div>
+        <div class="evo-header">
+          <span class="evo-tag">🎉 예훈 대격변 진화! 🎉</span>
+          <h2 id="evo-title">괴수급 예훈</h2>
+        </div>
+        <div class="evo-avatar-preview" id="evo-avatar-preview">
+          <!-- 진화 시 줌인된 예훈 비주얼 -->
+        </div>
+        <p class="evo-message" id="evo-message">"이제 일반적인 의자로는 예훈의 엉덩이를 감당할 수 없습니다!"</p>
+        <div class="evo-perks" id="evo-perks">
+          <div class="perk-item">✨ 섭취 보너스 x2.0</div>
+          <div class="perk-item">🍔 신규 전설 음식 해금!</div>
+        </div>
+        <button id="btn-evo-confirm" class="btn-primary">끝없이 먹으러 가기!</button>
+      </div>
+    </div>
+
+    <!-- 오프라인 방치 보상 모달 -->
+    <div id="offline-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-icon">😴 💤</div>
+        <h2>예훈이 자는 동안 야식을 먹었습니다!</h2>
+        <p id="offline-time-text">자리 비운 시간: 25분 10초</p>
+        <div class="offline-rewards">
+          <div class="reward-box">
+            <span class="reward-label">획득 칼로리</span>
+            <span class="reward-val" id="offline-cal-val">+15,400 Cal</span>
+          </div>
+          <div class="reward-box">
+            <span class="reward-label">수거한 코인</span>
+            <span class="reward-val" id="offline-coin-val">+3,200 🪙</span>
+          </div>
+        </div>
+        <button id="btn-offline-claim" class="btn-primary">야무지게 챙기기!</button>
+      </div>
+    </div>
+
+    <!-- 통계 및 업적 모달 -->
+    <div id="stats-modal" class="modal-backdrop hidden">
+      <div class="modal-card wide-modal">
+        <div class="modal-title-row">
+          <h2>🏆 예훈 육성 기록 및 업적</h2>
+          <button class="btn-close-modal" data-close="stats-modal">✕</button>
+        </div>
+        
+        <div class="modal-tabs">
+          <button class="sub-tab active" data-subtab="sub-stats">통계 기록</button>
+          <button class="sub-tab" data-subtab="sub-achievements">달성 업적</button>
+        </div>
+
+        <div id="sub-stats" class="sub-tab-content active">
+          <div class="stats-table">
+            <div class="stat-row"><span>총 먹어치운 음식 수</span><b id="rec-total-food">0개</b></div>
+            <div class="stat-row"><span>총 클릭 횟수</span><b id="rec-total-clicks">0회</b></div>
+            <div class="stat-row"><span>총 누적 섭취 칼로리</span><b id="rec-total-cal">0 Cal</b></div>
+            <div class="stat-row"><span>총 누적 획득 코인</span><b id="rec-total-coins">0 🪙</b></div>
+            <div class="stat-row"><span>플레이 타임</span><b id="rec-playtime">0분 0초</b></div>
+            <div class="stat-row"><span>도달한 최대 진화 단계</span><b id="rec-max-stage">자취방 백수</b></div>
+          </div>
+        </div>
+
+        <div id="sub-achievements" class="sub-tab-content">
+          <div id="achievements-list" class="achieve-grid">
+            <!-- game.js에서 렌더링 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 설정 및 데이터 관리 모달 -->
+    <div id="settings-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-title-row">
+          <h2>⚙️ 게임 설정</h2>
+          <button class="btn-close-modal" data-close="settings-modal">✕</button>
+        </div>
+        <div class="settings-list">
+          <div class="setting-item">
+            <div class="setting-desc">
+              <b>효과음 (SFX)</b>
+              <p>냠냠, 꿀꺽, 트림 및 팡파레 효과음</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="chk-sfx" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-item">
+            <div class="setting-desc">
+              <b>화면 파티클 & 진동 효과</b>
+              <p>화려한 음식 조각 및 레벨업 폭죽</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="chk-particles" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-item">
+            <div class="setting-desc">
+              <b>데미지 & 칼로리 텍스트 플로팅</b>
+              <p>음식 먹일 때 숫자가 떠오름</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="chk-floating" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button id="btn-save-manual" class="btn-secondary">💾 수동 즉시 저장</button>
+          <button id="btn-reset-game" class="btn-danger">⚠️ 게임 초기화</button>
+        </div>
+        <div id="save-notice-text" class="save-notice">10초마다 자동 저장됩니다.</div>
+      </div>
+    </div>
+
+    <!-- 게임 초기화 재확인 모달 -->
+    <div id="reset-confirm-modal" class="modal-backdrop hidden">
+      <div class="modal-card danger-card">
+        <div class="modal-icon">⚠️</div>
+        <h2>정말로 초기화하시겠습니까?</h2>
+        <p>지금까지 키운 거대한 예훈의 모든 체중과 기록이 처음 상태(55kg 자취생)로 돌아갑니다. 이 작업은 되돌릴 수 없습니다!</p>
+        <div class="modal-btn-row">
+          <button id="btn-reset-cancel" class="btn-secondary">취소하기</button>
+          <button id="btn-reset-final" class="btn-danger">네, 초기화합니다</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 드래그 중인 음식 고스트 엘리먼트 -->
+    <div id="drag-ghost" class="drag-ghost hidden"></div>
+  </div>
+
+  <!-- JavaScript 모듈 로드 -->
+  <script src="audio.js"></script>
+  <script src="character.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
