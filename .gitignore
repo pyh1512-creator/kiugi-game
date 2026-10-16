@@ -8,3 +8,5 @@ Thumbs.db
 # Temp / Editor files
 .vscode/
 .idea/
+
+.vercel
